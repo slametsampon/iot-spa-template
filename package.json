@@ -1,0 +1,44 @@
+{
+  "name": "iot-spa-template",
+  "version": "1.0.0",
+  "description": "Template SPA ringan dan modular untuk proyek IoT, menggunakan LitElement, Tailwind CSS, esbuild, dan vaadin-router. Cocok untuk Raspberry Pi dan ESP32.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run tailwind:watch\" \"npm run esbuild:watch\" \"npm run serve\"",
+    "esbuild:watch": "cross-env NODE_ENV=development node frontend/esbuild.config.js --watch",
+    "tailwind:watch": "npx @tailwindcss/cli -i ./frontend/src/styles.css -o ./build/frontend/styles.css --watch",
+    "build:frontend": "npm run tailwind:build && node frontend/esbuild.config.js && npm run copy:html",
+    "tailwind:build": "npx @tailwindcss/cli -i ./frontend/src/styles.css -o ./build/frontend/styles.css --minify",
+    "serve": "live-server build/frontend",
+    "copy:html": "copy frontend\\src\\index.html build\\frontend\\",
+    "clean": "rimraf build/frontend",
+    "deploy:github": "npm run build:frontend && gh-pages -d build/frontend"
+  },
+  "keywords": [
+    "iot",
+    "spa",
+    "template",
+    "lit",
+    "tailwind",
+    "esbuild",
+    "raspberry-pi",
+    "esp32"
+  ],
+  "author": "iot-spa-template team",
+  "license": "MIT",
+  "dependencies": {
+    "@tailwindcss/cli": "^4.1.12",
+    "@vaadin/router": "^2.0.0",
+    "lit": "^3.3.1",
+    "tailwindcss": "^4.1.12"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "cross-env": "^10.0.0",
+    "esbuild": "^0.25.9",
+    "gh-pages": "^6.3.0",
+    "live-server": "^1.2.2",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.9.2"
+  }
+}
