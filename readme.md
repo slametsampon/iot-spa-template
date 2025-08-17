@@ -1,3 +1,33 @@
+- [🛠️ Setup Project `iot-spa-template` dari Awal](#️-setup-project-iot-spa-template-dari-awal)
+  - [✅ 1. Buat Folder Proyek Baru](#-1-buat-folder-proyek-baru)
+  - [✅ 2. Install Dependency Utama](#-2-install-dependency-utama)
+  - [✅ 3. Buat Struktur Direktori](#-3-buat-struktur-direktori)
+  - [✅ 4. Buat File Konfigurasi](#-4-buat-file-konfigurasi)
+    - [🔸 `tsconfig.base.json` (di root)](#-tsconfigbasejson-di-root)
+    - [🔸 `frontend/tsconfig.json`](#-frontendtsconfigjson)
+    - [🔸 `frontend/esbuild.config.js`](#-frontendesbuildconfigjs)
+  - [✅ 5. Tambahkan Script ke `package.json`](#-5-tambahkan-script-ke-packagejson)
+  - [✅ 6. Inisialisasi Tailwind CSS](#-6-inisialisasi-tailwind-css)
+  - [✅ 7. Tambahkan Isi File Minimum](#-7-tambahkan-isi-file-minimum)
+    - [📄 `frontend/src/index.html`](#-frontendsrcindexhtml)
+    - [📄 `frontend/src/main.ts`](#-frontendsrcmaints)
+    - [📄 `frontend/src/components/app-shell.ts`](#-frontendsrccomponentsapp-shellts)
+    - [📄 `frontend/src/components/app-main.ts`](#-frontendsrccomponentsapp-maints)
+  - [🚧 9. Build Produksi (untuk deploy / ESP32)](#-9-build-produksi-untuk-deploy--esp32)
+  - [🧹 10. Tambahkan `.gitignore`](#-10-tambahkan-gitignore)
+  - [✅ Project `iot-spa-template` Siap Digunakan!](#-project-iot-spa-template-siap-digunakan)
+- [🚀 Cara Menggunakan Project `iot-spa-template`](#-cara-menggunakan-project-iot-spa-template)
+  - [🧾 Prasyarat](#-prasyarat)
+  - [📦 1. Clone / Download Template](#-1-clone--download-template)
+  - [📁 2. Struktur Direktori Awal](#-2-struktur-direktori-awal)
+  - [📥 3. Install Dependensi](#-3-install-dependensi)
+  - [👨‍💻 4. Jalankan dalam Mode Dev](#-4-jalankan-dalam-mode-dev)
+  - [🛠️ 5. Build Produksi (untuk ESP32 / Raspberry Pi / Hosting)](#️-5-build-produksi-untuk-esp32--raspberry-pi--hosting)
+  - [🧹 6. Membersihkan Build](#-6-membersihkan-build)
+  - [🌍 7. Deploy ke GitHub Pages (opsional)](#-7-deploy-ke-github-pages-opsional)
+  - [🔧 Optional: Konfigurasi Ulang Alias](#-optional-konfigurasi-ulang-alias)
+  - [✅ Proyek Siap Digunakan](#-proyek-siap-digunakan)
+
 ## 🛠️ Setup Project `iot-spa-template` dari Awal
 
 ---
@@ -263,8 +293,8 @@ Buat file frontend/src/style.css
     <link rel="stylesheet" href="./styles.css" />
     <script type="module" src="./main.js"></script>
   </head>
-  <body class="bg-gray-100 text-gray-800">
-    <main id="app"></main>
+  <body class="flex flex-col min-h-screen bg-gray-50">
+    <app-shell></app-shell>
   </body>
 </html>
 ```
@@ -277,13 +307,404 @@ Buat file frontend/src/style.css
 import './components/app-shell.ts';
 ```
 
+#### 📄 `frontend/src/components/app-shell.ts`
+
+```ts
+import { LitElement, html } from 'lit';
+import { customElement, state, query } from 'lit/decorators.js';
+
+import './app-header.ts';
+import './app-footer.ts';
+import './app-main.ts';
+import { AuthService } from '../services/auth-service';
+
+@customElement('app-shell')
+export class AppShell extends LitElement {
+  // Gunakan light DOM agar Tailwind global tetap berlaku
+  createRenderRoot() {
+    return this;
+  }
+
+  // Tentukan basePath untuk lokal vs GitHub Pages
+  private readonly basePath =
+    window.location.hostname === '127.0.0.1' ? '/' : '/iot-spa-template/';
+
+  @state() private currentPath = window.location.pathname;
+
+  @query('app-main') private appMainEl!: HTMLElement & {
+    navigate: (path: string) => void;
+  };
+
+  connectedCallback() {
+    super.connectedCallback();
+    window.addEventListener('popstate', this._onPopState);
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener('popstate', this._onPopState);
+    super.disconnectedCallback();
+  }
+
+  private _onPopState = () => {
+    this.currentPath = window.location.pathname;
+  };
+
+  private _onNavChanged = (e: CustomEvent<{ path: string }>) => {
+    const rawPath = e.detail.path.replace(/^\/+/, '');
+    const target = `/${rawPath}`;
+    this.appMainEl?.navigate(target);
+  };
+
+  private _onLoginClick = () => this.appMainEl?.navigate('/login');
+
+  private _onLogoutClick = () => {
+    AuthService.logout();
+    this.appMainEl?.navigate('/');
+    this.requestUpdate(); // refresh props di header
+  };
+
+  private _onProfileClick = () => this.appMainEl?.navigate('/dashboard');
+
+  private _onNavigateTo = (e: CustomEvent<{ path: string }>) =>
+    this.appMainEl?.navigate(e.detail.path);
+
+  private _onAuthChanged = () => this.requestUpdate();
+
+  render() {
+    return html`
+      <app-header
+        .currentPath=${this.currentPath}
+        .username=${AuthService.getUser()?.username ?? 'Guest'}
+        .avatarUrl=${AuthService.getUser()?.avatarUrl ?? ''}
+        .isLoggedIn=${AuthService.isLoggedIn()}
+        @nav-changed=${this._onNavChanged}
+        @login-click=${this._onLoginClick}
+        @logout-click=${this._onLogoutClick}
+        @profile-click=${this._onProfileClick}
+      >
+      </app-header>
+
+      <app-main
+        class="flex-grow"
+        .basePath=${this.basePath}
+        @route-changed=${(ev: CustomEvent<{ path: string }>) => {
+          this.currentPath = ev.detail.path;
+        }}
+        @navigate-to=${this._onNavigateTo}
+        @auth-changed=${this._onAuthChanged}
+      >
+      </app-main>
+
+      <app-footer></app-footer>
+    `;
+  }
+}
+```
+
+#### 📄 `frontend/src/components/app-main.ts`
+
+````ts
+import { LitElement, html } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+import { Router } from '@vaadin/router';
+
+import '@pages/page-home.ts';
+import '@pages/page-dashboard.ts';
+import '@pages/page-login.ts';
+
+@customElement('app-main')
+export class AppMain extends LitElement {
+  createRenderRoot() {
+    return this;
+  }
+
+  @property() basePath: string = '/';
+
+  private _router?: Router;
+
+  firstUpdated() {
+    const outlet =
+      this.shadowRoot?.getElementById('outlet') ??
+      this.querySelector('#outlet');
+    if (!outlet) return;
+
+    const router = new Router(outlet);
+    router.setRoutes([
+      { path: '/', component: 'page-home' },
+      { path: '/dashboard', component: 'page-dashboard' },
+      { path: '/login', component: 'page-login' },
+    ]);
+
+    // @ts-ignore
+    router.subscribe((ctx) => {
+      this.dispatchEvent(
+        new CustomEvent('route-changed', {
+          detail: { path: ctx.pathname },
+          bubbles: true,
+          composed: true,
+        })
+      );
+    });
+
+    this._router = router;
+  }
+
+  navigate(path: string) {
+    Router.go(path); // ✅ OK
+  }
+
+  render() {
+    return html`<div id="outlet" class="p-4"></div>`;
+  }
+}
+```
+
+#### 📄 `frontend/src/components/app-header.ts`
+```ts
+import { LitElement, html } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+
+@customElement('app-header')
+export class AppHeader extends LitElement {
+  createRenderRoot() {
+    return this;
+  }
+
+  @property() currentPath: string = '/';
+  @property() username: string = 'Guest';
+  @property() avatarUrl: string = '';
+  @property({ type: Boolean }) isLoggedIn = false;
+
+  render() {
+    return html`
+      <header
+        class="p-4 bg-blue-600 text-white flex justify-between items-center"
+      >
+        <div class="text-lg font-bold">IoT Dashboard</div>
+        <nav class="flex gap-4">
+          <button @click=${() => this._navigate('/')} class="hover:underline">
+            Home
+          </button>
+          <button
+            @click=${() => this._navigate('/dashboard')}
+            class="hover:underline"
+          >
+            Dashboard
+          </button>
+          ${this.isLoggedIn
+            ? html`
+                <button
+                  @click=${() =>
+                    this.dispatchEvent(new CustomEvent('profile-click'))}
+                >
+                  Profile
+                </button>
+                <button
+                  @click=${() =>
+                    this.dispatchEvent(new CustomEvent('logout-click'))}
+                >
+                  Logout
+                </button>
+              `
+            : html`
+                <button
+                  @click=${() =>
+                    this.dispatchEvent(new CustomEvent('login-click'))}
+                >
+                  Login
+                </button>
+              `}
+        </nav>
+      </header>
+    `;
+  }
+
+  private _navigate(path: string) {
+    this.dispatchEvent(
+      new CustomEvent('nav-changed', {
+        detail: { path },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+}
+```
+#### 📄 `frontend/src/components/app-footer.ts`
+```js
+import { LitElement, html } from 'lit';
+import { customElement } from 'lit/decorators.js';
+
+@customElement('app-footer')
+export class AppFooter extends LitElement {
+  createRenderRoot() {
+    return this;
+  }
+
+  render() {
+    return html`
+      <footer class="p-4 bg-gray-200 text-center text-sm text-gray-600 mt-auto">
+        © ${new Date().getFullYear()} IoT SPA Template. All rights reserved.
+      </footer>
+    `;
+  }
+}
+
+```
+#### 📄 `frontend/src/pages/page-dashboard.ts`
+```js
+import { LitElement, html } from 'lit';
+import { customElement } from 'lit/decorators.js';
+
+import '@views/dashboard/sensor-card.ts';
+import '@views/dashboard/chart-card.ts';
+
+@customElement('page-dashboard')
+export class PageDashboard extends LitElement {
+  createRenderRoot() {
+    return this;
+  }
+
+  render() {
+    return html`
+      <section class="mt-6 px-4">
+        <h1 class="text-2xl font-semibold mb-4">📊 Dashboard</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <sensor-card label="Suhu" value="25.3" unit="°C"></sensor-card>
+          <sensor-card label="Kelembapan" value="60" unit="%"></sensor-card>
+          <sensor-card label="pH Tanah" value="6.5" unit="pH"></sensor-card>
+        </div>
+
+        <chart-card></chart-card>
+      </section>
+    `;
+  }
+}
+
+```
+#### 📄 `frontend/src/pages/page-home.ts`
+```js
+import { LitElement, html } from 'lit';
+import { customElement } from 'lit/decorators.js';
+
+@customElement('page-home')
+export class PageHome extends LitElement {
+  createRenderRoot() {
+    return this;
+  }
+
+  render() {
+    return html`
+      <section class="text-center mt-10">
+        <h1 class="text-3xl font-bold">🌱 IoT SPA Template</h1>
+        <p class="text-gray-600 mt-2">Halaman Beranda / Home</p>
+      </section>
+    `;
+  }
+}
+
+```
+#### 📄 `frontend/src/pages/page-login.ts`
+```js
+import { LitElement, html } from 'lit';
+import { customElement } from 'lit/decorators.js';
+
+@customElement('page-login')
+export class PageLogin extends LitElement {
+  createRenderRoot() {
+    return this;
+  }
+
+  render() {
+    return html`
+      <section
+        class="mt-10 max-w-sm mx-auto p-4 border rounded bg-white shadow"
+      >
+        <h1 class="text-xl font-bold mb-4">🔐 Login</h1>
+        <form>
+          <input
+            type="text"
+            placeholder="Username"
+            class="block w-full mb-3 px-3 py-2 border rounded"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            class="block w-full mb-3 px-3 py-2 border rounded"
+          />
+          <button
+            type="submit"
+            class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Login
+          </button>
+        </form>
+      </section>
+    `;
+  }
+}
+
+```
+#### 📄 `frontend/src/views/dashboard/chart-card.ts`
+```js
+import { LitElement, html } from 'lit';
+import { customElement } from 'lit/decorators.js';
+
+@customElement('chart-card')
+export class ChartCard extends LitElement {
+  createRenderRoot() {
+    return this;
+  }
+
+  render() {
+    return html`
+      <div class="p-4 border rounded shadow bg-white">
+        <div class="text-sm text-gray-600 mb-2">Realtime Chart</div>
+        <div
+          class="w-full h-32 bg-gradient-to-r from-blue-200 to-blue-400 rounded animate-pulse"
+        ></div>
+      </div>
+    `;
+  }
+}
+
+```
+#### 📄 `frontend/src/views/dashboard/sensor-card.ts`
+```js
+import { LitElement, html } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+
+@customElement('sensor-card')
+export class SensorCard extends LitElement {
+  createRenderRoot() {
+    return this;
+  }
+
+  @property() label = 'Temperature';
+  @property() value = '25.3';
+  @property() unit = '°C';
+
+  render() {
+    return html`
+      <div class="p-4 border rounded shadow bg-white">
+        <div class="text-sm text-gray-600">${this.label}</div>
+        <div class="text-xl font-bold">
+          ${this.value} <span class="text-sm font-normal">${this.unit}</span>
+        </div>
+      </div>
+    `;
+  }
+}
+
+```
 ---
 
 ### ✅ 8. Jalankan!
 
 ```bash
 npm run dev
-```
+````
 
 ---
 
