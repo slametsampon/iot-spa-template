@@ -5,6 +5,7 @@ import { Router } from '@vaadin/router';
 import '@pages/page-home.ts';
 import '@pages/page-dashboard.ts';
 import '@pages/page-login.ts';
+import '@pages/page-about.ts';
 
 @customElement('app-main')
 export class AppMain extends LitElement {
@@ -27,6 +28,7 @@ export class AppMain extends LitElement {
       { path: '/', component: 'page-home' },
       { path: '/dashboard', component: 'page-dashboard' },
       { path: '/login', component: 'page-login' },
+      { path: '/about', component: 'page-about' },
     ]);
 
     // @ts-ignore

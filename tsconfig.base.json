@@ -12,6 +12,7 @@
       "@pages/*": ["frontend/src/pages/*"],
       "@services/*": ["frontend/src/services/*"],
       "@utils/*": ["frontend/src/utils/*"],
+      "@shared/*": ["frontend/src/shared/*"],
       "@models/*": ["frontend/src/models/*"]
     }
   }

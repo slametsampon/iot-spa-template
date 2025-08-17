@@ -48,9 +48,7 @@ const ensureDirExists = (dirPath) => {
 
 const copyFile = (src, dest) => {
   try {
-    if (!fs.existsSync(src)) {
-      throw new Error(`Source file ${src} not found.`);
-    }
+    if (!fs.existsSync(src)) throw new Error(`Source file ${src} not found.`);
     fs.copyFileSync(src, dest);
     console.log(`Copied ${src} to ${dest}`);
   } catch (error) {
@@ -63,14 +61,11 @@ const copyFolderRecursive = (src, dest) => {
     console.warn(`Warning: Source folder ${src} does not exist. Skipping.`);
     return;
   }
-
   ensureDirExists(dest);
-
   const files = fs.readdirSync(src);
   files.forEach((file) => {
     const srcPath = path.join(src, file);
     const destPath = path.join(dest, file);
-
     if (fs.statSync(srcPath).isDirectory()) {
       copyFolderRecursive(srcPath, destPath);
     } else {
@@ -79,6 +74,29 @@ const copyFolderRecursive = (src, dest) => {
   });
 };
 
+// ✨ Generate app-info.ts from package.json
+const generateAppInfo = () => {
+  const pkg = require('../package.json');
+  const content = `export const appInfo = {
+    name: '${pkg.name}',
+    version: '${pkg.version}',
+    year: ${new Date().getFullYear()}
+  };`;
+
+  const sharedDir = path.resolve(__dirname, 'src/shared');
+  const outPath = path.join(sharedDir, 'app-info.ts');
+
+  // ✅ Pastikan folder `shared/` ada
+  if (!fs.existsSync(sharedDir)) {
+    fs.mkdirSync(sharedDir, { recursive: true });
+    console.log(`Created folder: ${sharedDir}`);
+  }
+
+  fs.writeFileSync(outPath, content);
+  console.log(`📦 Generated app-info.ts from package.json`);
+};
+
+// Build & Watch
 const startBuild = async () => {
   console.log(
     `🔧 Starting esbuild in ${process.env.NODE_ENV || 'development'} mode...`
@@ -99,13 +117,18 @@ const startBuild = async () => {
   }
 };
 
+// Main Pipeline
 const main = async () => {
   const outputDir = path.resolve(__dirname, '../build/frontend');
   ensureDirExists(outputDir);
 
+  // Step 1: Generate app-info.ts
+  generateAppInfo();
+
+  // Step 2: Build
   await startBuild();
 
-  // Copy static assets
+  // Step 3: Copy static assets
   copyFile('frontend/src/index.html', path.join(outputDir, 'index.html'));
   copyFolderRecursive('frontend/src/assets', path.join(outputDir, 'assets'));
 };
