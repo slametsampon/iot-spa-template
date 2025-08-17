@@ -779,15 +779,8 @@ Pastikan sudah terinstal di sistem kamu:
 ### 📦 1. Clone / Download Template
 
 ```bash
-git clone https://github.com/namamu/iot-spa-template.git
-cd iot-spa-template
-```
-
-Atau, jika kamu mulai dari ZIP:
-
-```bash
-unzip iot-spa-template.zip
-cd iot-spa-template
+git clone https://github.com/slametsampon/iot-spa-template.git nama-folder-baru
+cd nama-folder-baru
 ```
 
 ---
